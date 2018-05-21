@@ -8,7 +8,7 @@ using System.Threading;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
 
-namespace LuxBotSharp
+namespace AutoQTun
 {
     //This is currently not used.
     //This will be used in future versions to speed things up :P

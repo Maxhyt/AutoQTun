@@ -5,18 +5,15 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace LuxBotSharp
+namespace AutoQTun
 {
     public static class Utils
     {
         public struct RECT
         {
             public int Left;
-
             public int Top;
-
             public int Right;
-
             public int Bottom;
         }
 

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.SqlTypes;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -9,9 +8,8 @@ using System.Reflection;
 using System.Threading;
 using OpenCvSharp;
 using OpenCvSharp.Extensions;
-using Mat = OpenCvSharp.CPlusPlus.Mat;
 
-namespace LuxBotSharp
+namespace AutoQTun
 {
     internal class Program
     {
@@ -19,7 +17,7 @@ namespace LuxBotSharp
         public static List<CvMat> ImageList = new List<CvMat>();
         public static CvArr Result;
         public static string WindowTitle;
-        public static string ProcessName = "LolClient";
+        public static string ProcessName = "LeagueClient";
         public static IntPtr HWND;
         public static Process PROCESS;
         public static CvPoint MinPos;
@@ -32,8 +30,8 @@ namespace LuxBotSharp
         {
             try
             {
-                Console.Title = "[LeagueSharp] LUX-BOT#";
-                Utils.Print("LUX-BOT v" + Assembly.GetExecutingAssembly().GetName().Version, ConsoleColor.Green);
+                Console.Title = "AutoQTun>";
+                Utils.Print("AutoQTun v" + Assembly.GetExecutingAssembly().GetName().Version, ConsoleColor.Green);
                 Console.WriteLine("\n\n\n");
                 if (args != null && args.Any(a => a.ToLower().Contains("c")))
                 {
@@ -61,8 +59,7 @@ namespace LuxBotSharp
                 Utils.Print("Everything went well! You can go afk", ConsoleColor.Cyan);
                 while (1 == 1)
                 {
-                    while (!Process.GetProcessesByName("League of Legends").Any() &&
-                           Process.GetProcessesByName(ProcessName).Any())
+                    while (!Process.GetProcessesByName("League of Legends").Any() && Process.GetProcessesByName(ProcessName).Any())
                     {
                         MainLoop();
                     }
@@ -90,8 +87,6 @@ namespace LuxBotSharp
                     Cv.CreateImage(Cv.Size(Screenshot.Width - image.Width + 1, Screenshot.Height - image.Height + 1),
                         BitDepth.F32, 1);
                 Cv.MatchTemplate(Screenshot, image, Result, MatchTemplateMethod.CCoeffNormed);
-                /*Screenshot.SaveImage("data/screenshot.png");
-                image.SaveImage("data/image.png");*/
                 Cv.Normalize(Result, Result, 0, 1, NormType.MinMax);
                 Cv.MinMaxLoc(Result, out MinAcc, out MaxAcc, out MinPos, out MaxPos, null);
                 Console.WriteLine(MaxAcc);
