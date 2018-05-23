@@ -30,18 +30,10 @@ namespace AutoQTun
         {
             try
             {
-                Console.Title = "AutoQTun>";
-                Utils.Print("AutoQTun v" + Assembly.GetExecutingAssembly().GetName().Version, ConsoleColor.Green);
-                Console.WriteLine("\n\n\n");
-                if (args != null && args.Any(a => a.ToLower().Contains("c")))
-                {
-                    ImageConverter.Try(args);
-                    return;
-                }
-                else
-                {
-                    Utils.Print("Attempting normal bot errection\n\n", ConsoleColor.Cyan);
-                }
+                Console.Title = Utils.RandomName();
+                Utils.Print("AutoQTun v" + Assembly.GetExecutingAssembly().GetName().Version.Major + " lock and loaded.\n", ConsoleColor.Green);
+
+                Utils.Print("Attempting normal bot errection\n", ConsoleColor.Cyan);
 
                 PROCESS = Process.GetProcessesByName(ProcessName).FirstOrDefault();
                 if (PROCESS != null)
@@ -57,9 +49,9 @@ namespace AutoQTun
                 }
                 LoadImages();
                 Utils.Print("Everything went well! You can go afk", ConsoleColor.Cyan);
-                while (1 == 1)
+                while (true)
                 {
-                    while (!Process.GetProcessesByName("League of Legends").Any() && Process.GetProcessesByName(ProcessName).Any())
+                    if (!Process.GetProcessesByName("League of Legends").Any() && Process.GetProcessesByName(ProcessName).Any())
                     {
                         MainLoop();
                     }
@@ -83,13 +75,12 @@ namespace AutoQTun
                 Screenshot = new CvMat(screen.Rows, screen.Cols, MatrixType.U8C1);
                 screen.CvtColor(Screenshot, ColorConversion.BgraToGray);
 
-                Result =
-                    Cv.CreateImage(Cv.Size(Screenshot.Width - image.Width + 1, Screenshot.Height - image.Height + 1),
-                        BitDepth.F32, 1);
+                Result = Cv.CreateImage(Cv.Size(Screenshot.Width - image.Width + 1, Screenshot.Height - image.Height + 1), BitDepth.F32, 1);
+
                 Cv.MatchTemplate(Screenshot, image, Result, MatchTemplateMethod.CCoeffNormed);
                 Cv.Normalize(Result, Result, 0, 1, NormType.MinMax);
                 Cv.MinMaxLoc(Result, out MinAcc, out MaxAcc, out MinPos, out MaxPos, null);
-                Console.WriteLine(MaxAcc);
+                Utils.Print("Accuracy: " + MaxAcc, ConsoleColor.White);
                 if (MaxAcc >= 0.75)
                 {
                     Position = new Point(MaxPos.X, MaxPos.Y);
@@ -109,7 +100,6 @@ namespace AutoQTun
             foreach (string file in files)
             {
                 Utils.Print("Loaded " + Path.GetFileName(file), ConsoleColor.Green);
-                Console.WriteLine(file);
                 var img = CvMat.FromFile(file);
                 var gray = new CvMat(img.Rows, img.Cols, MatrixType.U8C1);
                 img.CvtColor(gray, ColorConversion.BgrToGray);

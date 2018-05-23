@@ -9,6 +9,8 @@ namespace AutoQTun
 {
     public static class Utils
     {
+        private static Random rand = new Random();
+
         public struct RECT
         {
             public int Left;
@@ -124,14 +126,14 @@ namespace AutoQTun
         public static void LeftClick()
         {
             Utils.mouse_event(2u, 0u, 0u, 0u, 0);
-            Thread.Sleep(new Random().Next(10, 30));
+            Thread.Sleep(rand.Next(10, 30));
             Utils.mouse_event(4u, 0u, 0u, 0u, 0);
         }
 
         public static void RightClick()
         {
             Utils.mouse_event(8u, 0u, 0u, 0u, 0);
-            Thread.Sleep(new Random().Next(10, 30));
+            Thread.Sleep(rand.Next(10, 30));
             Utils.mouse_event(16u, 0u, 0u, 0u, 0);
         }
 
@@ -146,14 +148,40 @@ namespace AutoQTun
             for (int i = 0; i < keys.Length; i++)
             {
                 System.Windows.Forms.SendKeys.Send(keys[i].ToString());
-                Thread.Sleep(new Random().Next(delay - 30, delay + 30));
+                Thread.Sleep(rand.Next(delay - 30, delay + 30));
             }
         }
 
         public static void Print(string text, ConsoleColor color)
         {
+            Console.ForegroundColor = ConsoleColor.White;
+            Console.Write("[" + DateTime.Now + "] ");
             Console.ForegroundColor = color;
             Console.WriteLine(text);
+        }
+
+        public static string RandomName()
+        {
+            char[] name = new char[32];
+
+            for (int i = 0; i < name.Length; i++)
+            {
+                int type = rand.Next(1, 4);
+                switch (type)
+                {
+                    case 1:
+                        name[i] = (char)rand.Next(48, 58);
+                        break;
+                    case 2:
+                        name[i] = (char)rand.Next(65, 91);
+                        break;
+                    case 3:
+                        name[i] = (char)rand.Next(97, 123);
+                        break;
+                }
+            }
+
+            return Convert.ToBase64String(Convert.FromBase64CharArray(name, 0, name.Length));
         }
     }
 }
