@@ -1,6 +1,9 @@
+using AForge.Imaging;
+using AForge.Imaging.Filters;
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
@@ -77,14 +80,6 @@ namespace AutoQTun
             RDW_NOFRAME = 2048
         }
 
-        public static IntPtr NULL = (IntPtr) 0;
-
-        public static System.Drawing.Point MousePosition
-        {
-            get { return Cursor.Position; }
-            set { Utils.MoveMouse(value, true, 100); }
-        }
-
         [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -105,18 +100,39 @@ namespace AutoQTun
 
         public static Bitmap TakeScreenshot()
         {
-            Bitmap screenshot = new Bitmap(Screen.PrimaryScreen.Bounds.Width,
-                Screen.PrimaryScreen.Bounds.Height);
-            Graphics graphic = Graphics.FromImage(screenshot);
-            graphic.CopyFromScreen(0, 0, 0, 0, Screen.PrimaryScreen.Bounds.Size);
-            graphic.Dispose();
+            Bitmap screenshot = new Bitmap(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height, PixelFormat.Format24bppRgb);
+            using (Graphics graphic = Graphics.FromImage(screenshot))
+            {
+                graphic.CopyFromScreen(0, 0, 0, 0, Screen.PrimaryScreen.Bounds.Size);
+            }
+
             return screenshot;
+        }
+
+        public static Point CompareImages(Bitmap pic1, Bitmap pic2)
+        {
+            ExhaustiveTemplateMatching tm = new ExhaustiveTemplateMatching(0.95f);
+
+            TemplateMatch[] matches = tm.ProcessImage(pic1, pic2);
+
+            if (matches.Length > 0)
+            {
+                return new Point(matches[0].Rectangle.Location.X, matches[0].Rectangle.Location.Y);
+            }
+
+            return Point.Empty;
+        }
+
+        public static Bitmap ToGrayScale(Bitmap pic)
+        {
+            Grayscale filter = new Grayscale(0.2125, 0.7154, 0.0721);
+            Bitmap bit = filter.Apply(pic);
+            return bit;
         }
 
         public static void SetWindowPos(this Process Process, int x, int y, int width, int height)
         {
-            Utils.SetWindowPos(Process.MainWindowHandle, (IntPtr) 0, x, y, width, height,
-                Utils.SetWindowPosFlags.SWP_SHOWWINDOW);
+            Utils.SetWindowPos(Process.MainWindowHandle, (IntPtr) 0, x, y, width, height, Utils.SetWindowPosFlags.SWP_SHOWWINDOW);
             Utils.RedrawWindow(Process.MainWindowHandle, (IntPtr) 0, (IntPtr) 0, 256u);
             Utils.SetForegroundWindow(Process.MainWindowHandle);
             Utils.ShowWindow(Process.MainWindowHandle, 6);
@@ -126,15 +142,9 @@ namespace AutoQTun
         public static void LeftClick()
         {
             Utils.mouse_event(2u, 0u, 0u, 0u, 0);
-            Thread.Sleep(rand.Next(10, 30));
+            Thread.Sleep(rand.Next(20, 50));
             Utils.mouse_event(4u, 0u, 0u, 0u, 0);
-        }
-
-        public static void RightClick()
-        {
-            Utils.mouse_event(8u, 0u, 0u, 0u, 0);
-            Thread.Sleep(rand.Next(10, 30));
-            Utils.mouse_event(16u, 0u, 0u, 0u, 0);
+            Thread.Sleep(rand.Next(100, 150));
         }
 
         public static bool MoveMouse(System.Drawing.Point target, bool human = true, int steps = 100)

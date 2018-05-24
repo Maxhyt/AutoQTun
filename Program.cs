@@ -6,25 +6,19 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
-using OpenCvSharp;
-using OpenCvSharp.Extensions;
+using System.Threading.Tasks;
 
 namespace AutoQTun
 {
     internal class Program
     {
-        public static CvMat Screenshot;
-        public static List<CvMat> ImageList = new List<CvMat>();
-        public static CvArr Result;
-        public static string WindowTitle;
-        public static string ProcessName = "LeagueClient";
-        public static IntPtr HWND;
-        public static Process PROCESS;
-        public static CvPoint MinPos;
-        public static CvPoint MaxPos;
-        public static double MinAcc;
-        public static double MaxAcc;
-        public static Point Position = new Point(0, 0);
+        private static Dictionary<string,Bitmap> ImageList = new Dictionary<string, Bitmap>();
+        private static Dictionary<string, string> settings = new Dictionary<string, string>();
+        private static string WindowTitle;
+        private static string ProcessName = "LeagueClient";
+        private static IntPtr HWND;
+        private static Process PROCESS;
+        private static Point positionHolder = new Point(0, 0);
 
         private static void Main(string[] args)
         {
@@ -35,7 +29,7 @@ namespace AutoQTun
 
                 Utils.Print("Attempting normal bot errection\n", ConsoleColor.Cyan);
 
-                PROCESS = Process.GetProcessesByName(ProcessName).FirstOrDefault();
+                /*PROCESS = Process.GetProcessesByName(ProcessName).FirstOrDefault();
                 if (PROCESS != null)
                 {
                     HWND = PROCESS.MainWindowHandle;
@@ -46,15 +40,17 @@ namespace AutoQTun
                     Utils.Print("Please start up lol and login", ConsoleColor.Red);
                     Console.ReadLine();
                     return;
-                }
+                }*/
+                LoadSettings();
                 LoadImages();
                 Utils.Print("Everything went well! You can go afk", ConsoleColor.Cyan);
                 while (true)
                 {
-                    if (!Process.GetProcessesByName("League of Legends").Any() && Process.GetProcessesByName(ProcessName).Any())
-                    {
+                    //if (!Process.GetProcessesByName("League of Legends").Any() && Process.GetProcessesByName(ProcessName).Any())
+                    //{
                         MainLoop();
-                    }
+                    //}
+                    Thread.Sleep(10);
                 }
             }
             catch (Exception e)
@@ -64,46 +60,105 @@ namespace AutoQTun
             }
         }
 
-
         public static void MainLoop()
         {
-            PROCESS.SetWindowPos(0, 0, 800, 600);
-            Thread.Sleep(200);
-            foreach (var image in ImageList)
+            //PROCESS.SetWindowPos(0, 0, Convert.ToInt32(settings["resolution"].Split('x')[0]), Convert.ToInt32(settings["resolution"].Split('x')[1]));
+            //Thread.Sleep(200);
+            Dictionary<string, Bitmap>[] lists = new Dictionary<string, Bitmap>[4];
+
+            for (int i = 0; i < ImageList.Count / 4; i++)
             {
-                CvMat screen = Utils.TakeScreenshot().ToMat().ToCvMat();
-                Screenshot = new CvMat(screen.Rows, screen.Cols, MatrixType.U8C1);
-                screen.CvtColor(Screenshot, ColorConversion.BgraToGray);
+                lists[0].Add(ImageList.ElementAt(i).Key, ImageList.ElementAt(i).Value);
+            }
 
-                Result = Cv.CreateImage(Cv.Size(Screenshot.Width - image.Width + 1, Screenshot.Height - image.Height + 1), BitDepth.F32, 1);
+            for (int i = ImageList.Count / 4; i < ImageList.Count / 4 *2; i++)
+            {
+                lists[1].Add(ImageList.ElementAt(i).Key, ImageList.ElementAt(i).Value);
+            }
 
-                Cv.MatchTemplate(Screenshot, image, Result, MatchTemplateMethod.CCoeffNormed);
-                Cv.Normalize(Result, Result, 0, 1, NormType.MinMax);
-                Cv.MinMaxLoc(Result, out MinAcc, out MaxAcc, out MinPos, out MaxPos, null);
-                Utils.Print("Accuracy: " + MaxAcc, ConsoleColor.White);
-                if (MaxAcc >= 0.75)
-                {
-                    Position = new Point(MaxPos.X, MaxPos.Y);
-                    Utils.MoveMouse(Position);
-                    Thread.Sleep(15);
-                    Utils.LeftClick();
-                    Thread.Sleep(100);
-                    MaxAcc = 0;
-                }
-                Result.Dispose();
+            for (int i = ImageList.Count / 4 * 2; i < ImageList.Count / 4 * 3; i++)
+            {
+                lists[2].Add(ImageList.ElementAt(i).Key, ImageList.ElementAt(i).Value);
+            }
+
+            for (int i = ImageList.Count / 4 * 3; i < ImageList.Count / 4 * 4; i++)
+            {
+                lists[3].Add(ImageList.ElementAt(i).Key, ImageList.ElementAt(i).Value);
+            }
+
+            foreach (var list in lists)
+            {
+                Task.Run(() => Process(list));
             }
         }
 
-        public static void LoadImages()
+        private static async Task Process(Dictionary<string,Bitmap> list)
+        {
+            foreach (var image in list.Values)
+            {
+                Bitmap screenshot = Utils.ToGrayScale(Utils.TakeScreenshot());
+                Point match = Utils.CompareImages(screenshot, image);
+                screenshot.Dispose();
+                if (!match.Equals(Point.Empty))
+                {
+                    Utils.Print("Found match at: " + match, ConsoleColor.Cyan);
+                    Utils.MoveMouse(match);
+                    Utils.LeftClick();
+                    Utils.MoveMouse(positionHolder);
+                    return;
+                }
+            }
+        }
+
+        private static void LoadImages()
         {
             string[] files = Directory.GetFiles(Path.Combine(Environment.CurrentDirectory, "data"));
             foreach (string file in files)
             {
+                if (settings["mode"].ToLower().Equals("bot") && Path.GetFileName(file).ToLower().Contains("pvp"))
+                    continue;
+                else if (settings["mode"].ToLower().Equals("normal") && (Path.GetFileName(file).ToLower().Contains("bot") || Path.GetFileName(file).ToLower().Contains("rank")))
+                    continue;
+                else if (settings["mode"].ToLower().Equals("ranksolo") && (Path.GetFileName(file).ToLower().Contains("bot") || Path.GetFileName(file).ToLower().Contains("normal") || Path.GetFileName(file).ToLower().Contains("flex")))
+                    continue;
+                else if (settings["mode"].ToLower().Equals("rankflex") && (Path.GetFileName(file).ToLower().Contains("bot") || Path.GetFileName(file).ToLower().Contains("normal") || Path.GetFileName(file).ToLower().Contains("solo")))
+                    continue;
+
+                Image pic = Image.FromFile(file);
+                Bitmap image = new Bitmap(pic.Width, pic.Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+                using (Graphics g = Graphics.FromImage(image))
+                {
+                    g.DrawImage(pic, 0, 0);
+                }
+                
+                ImageList.Add(Path.GetFileName(file), Utils.ToGrayScale(image));
+
+                image.Dispose();
                 Utils.Print("Loaded " + Path.GetFileName(file), ConsoleColor.Green);
-                var img = CvMat.FromFile(file);
-                var gray = new CvMat(img.Rows, img.Cols, MatrixType.U8C1);
-                img.CvtColor(gray, ColorConversion.BgrToGray);
-                ImageList.Add(gray);
+            }
+        }
+
+        private static void LoadSettings()
+        {
+            try
+            {
+                string[] file = File.ReadAllLines(@"settings.ini");
+                foreach (string line in file)
+                {
+                    if (line.Contains("##"))
+                        continue;
+                    string[] tmp = line.Split('=');
+                    settings.Add(tmp[0], tmp[1]);
+                }
+                Utils.Print("Settings loaded.", ConsoleColor.Yellow);
+                Utils.Print("Mode: " + settings["mode"], ConsoleColor.Yellow);
+                Utils.Print("Champion: " + settings["champ"], ConsoleColor.Yellow);
+                Utils.Print("Resolution: " + settings["resolution"], ConsoleColor.Yellow);
+            }
+            catch (Exception e)
+            {
+                Utils.Print("Settings load failed\n" + e, ConsoleColor.Red);
+                Console.ReadLine();
             }
         }
     }
