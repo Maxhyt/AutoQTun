@@ -7,12 +7,16 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using OpenCvSharp;
+using OpenCvSharp.Extensions;
+using Point = System.Drawing.Point;
+using Bitmap = System.Drawing.Bitmap;
 
 namespace AutoQTun
 {
     internal class Program
     {
-        private static Dictionary<string,Bitmap> ImageList = new Dictionary<string, Bitmap>();
+        private static Dictionary<string,Mat> ImageList = new Dictionary<string, Mat>();
         private static Dictionary<string, string> settings = new Dictionary<string, string>();
         private static string WindowTitle;
         private static string ProcessName = "LeagueClient";
@@ -64,26 +68,20 @@ namespace AutoQTun
         {
             //PROCESS.SetWindowPos(0, 0, Convert.ToInt32(settings["resolution"].Split('x')[0]), Convert.ToInt32(settings["resolution"].Split('x')[1]));
             //Thread.Sleep(200);
-            Dictionary<string, Bitmap>[] lists = new Dictionary<string, Bitmap>[4];
+            Dictionary<string, Mat>[] lists = new Dictionary<string, Mat>[]
+            {
+                new Dictionary<string, Mat>(),
+                new Dictionary<string, Mat>()
+            };
 
-            for (int i = 0; i < ImageList.Count / 4; i++)
+            for (int i = 0; i < ImageList.Count / 2; i++)
             {
                 lists[0].Add(ImageList.ElementAt(i).Key, ImageList.ElementAt(i).Value);
             }
 
-            for (int i = ImageList.Count / 4; i < ImageList.Count / 4 *2; i++)
+            for (int i = ImageList.Count / 2; i < ImageList.Count; i++)
             {
                 lists[1].Add(ImageList.ElementAt(i).Key, ImageList.ElementAt(i).Value);
-            }
-
-            for (int i = ImageList.Count / 4 * 2; i < ImageList.Count / 4 * 3; i++)
-            {
-                lists[2].Add(ImageList.ElementAt(i).Key, ImageList.ElementAt(i).Value);
-            }
-
-            for (int i = ImageList.Count / 4 * 3; i < ImageList.Count / 4 * 4; i++)
-            {
-                lists[3].Add(ImageList.ElementAt(i).Key, ImageList.ElementAt(i).Value);
             }
 
             foreach (var list in lists)
@@ -92,11 +90,11 @@ namespace AutoQTun
             }
         }
 
-        private static async Task Process(Dictionary<string,Bitmap> list)
+        private static async Task Process(Dictionary<string,Mat> list)
         {
             foreach (var image in list.Values)
             {
-                Bitmap screenshot = Utils.ToGrayScale(Utils.TakeScreenshot());
+                Mat screenshot = Utils.TakeScreenshot();
                 Point match = Utils.CompareImages(screenshot, image);
                 screenshot.Dispose();
                 if (!match.Equals(Point.Empty))
@@ -107,6 +105,7 @@ namespace AutoQTun
                     Utils.MoveMouse(positionHolder);
                     return;
                 }
+                await Task.Delay(1000);
             }
         }
 
@@ -123,17 +122,12 @@ namespace AutoQTun
                     continue;
                 else if (settings["mode"].ToLower().Equals("rankflex") && (Path.GetFileName(file).ToLower().Contains("bot") || Path.GetFileName(file).ToLower().Contains("normal") || Path.GetFileName(file).ToLower().Contains("solo")))
                     continue;
-
-                Image pic = Image.FromFile(file);
-                Bitmap image = new Bitmap(pic.Width, pic.Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-                using (Graphics g = Graphics.FromImage(image))
+                
+                using (Mat mat = new Mat(file, ImreadModes.GrayScale))
                 {
-                    g.DrawImage(pic, 0, 0);
+                    ImageList.Add(Path.GetFileName(file), mat);
                 }
                 
-                ImageList.Add(Path.GetFileName(file), Utils.ToGrayScale(image));
-
-                image.Dispose();
                 Utils.Print("Loaded " + Path.GetFileName(file), ConsoleColor.Green);
             }
         }

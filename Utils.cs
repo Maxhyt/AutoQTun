@@ -1,5 +1,3 @@
-using AForge.Imaging;
-using AForge.Imaging.Filters;
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -7,6 +5,9 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+using OpenCvSharp;
+using OpenCvSharp.Extensions;
+using Point = System.Drawing.Point;
 
 namespace AutoQTun
 {
@@ -98,36 +99,22 @@ namespace AutoQTun
         [DllImport("user32.dll")]
         public static extern bool RedrawWindow(IntPtr hWnd, IntPtr lpRectUpdate, IntPtr hrgnUpdate, uint flags);
 
-        public static Bitmap TakeScreenshot()
+        public static Mat TakeScreenshot()
         {
             Bitmap screenshot = new Bitmap(Screen.PrimaryScreen.Bounds.Width, Screen.PrimaryScreen.Bounds.Height, PixelFormat.Format24bppRgb);
             using (Graphics graphic = Graphics.FromImage(screenshot))
             {
                 graphic.CopyFromScreen(0, 0, 0, 0, Screen.PrimaryScreen.Bounds.Size);
             }
-
-            return screenshot;
+            
+            return BitmapConverter.ToMat(screenshot);
         }
 
-        public static Point CompareImages(Bitmap pic1, Bitmap pic2)
+        public static Point CompareImages(Mat pic1, Mat pic2)
         {
-            ExhaustiveTemplateMatching tm = new ExhaustiveTemplateMatching(0.95f);
-
-            TemplateMatch[] matches = tm.ProcessImage(pic1, pic2);
-
-            if (matches.Length > 0)
-            {
-                return new Point(matches[0].Rectangle.Location.X, matches[0].Rectangle.Location.Y);
-            }
+            
 
             return Point.Empty;
-        }
-
-        public static Bitmap ToGrayScale(Bitmap pic)
-        {
-            Grayscale filter = new Grayscale(0.2125, 0.7154, 0.0721);
-            Bitmap bit = filter.Apply(pic);
-            return bit;
         }
 
         public static void SetWindowPos(this Process Process, int x, int y, int width, int height)
